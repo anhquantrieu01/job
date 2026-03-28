@@ -1,12 +1,21 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import SearchBar from "./SearchBar";
 
 export default function MobileMenu() {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
 
   return (
     <>
@@ -20,9 +29,17 @@ export default function MobileMenu() {
 
       {/* Overlay */}
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setOpen(false)}>
-          <div className="absolute right-0 top-0 h-full w-72 bg-white p-6 text-black">
-
+        <div
+          className="fixed inset-0 z-50 bg-black/50"
+          onClick={() => setOpen(false)}
+        >
+          {/* Sidebar */}
+          <div
+            className={`absolute right-0 top-0 h-full w-72 bg-white p-6 text-black transform transition-transform duration-300 ${
+              open ? "translate-x-0" : "translate-x-full"
+            }`}
+            onClick={(e) => e.stopPropagation()} // ✅ FIX BUG
+          >
             {/* Close */}
             <button
               className="mb-6"
@@ -31,8 +48,6 @@ export default function MobileMenu() {
               <X />
             </button>
 
-
-
             {/* Search */}
             <div className="mb-6">
               <SearchBar />
@@ -40,7 +55,9 @@ export default function MobileMenu() {
 
             {/* Menu */}
             <nav className="flex flex-col gap-4">
-              <Link href="/jobs">Công việc</Link>
+              <Link href="/jobs" onClick={() => setOpen(false)}>
+                Công việc
+              </Link>
             </nav>
           </div>
         </div>
