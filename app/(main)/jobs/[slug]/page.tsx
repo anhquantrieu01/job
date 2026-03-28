@@ -63,6 +63,7 @@ export default async function JobDetailPage({
 }) {
   const { slug } = await params;
   const session = await auth();
+  const userId = session?.user?.id;
   const job = await prisma.job.findUnique({
     where: { slug },
     include: {
@@ -178,12 +179,28 @@ export default async function JobDetailPage({
               Ứng tuyển công việc
             </h3>
 
-            <ApplyForm jobId={job.id} />
+            {userId ? (
+              <>
+                <ApplyForm jobId={job.id} />
 
-            {/* SAVE BUTTON */}
-            <div className="mt-4">
-              <SaveJobButton jobId={job.id} initialSaved={isSaved} />
-            </div>
+                <div className="mt-4">
+                  <SaveJobButton jobId={job.id} initialSaved={isSaved} />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Bạn cần đăng nhập để ứng tuyển hoặc lưu công việc
+                </p>
+
+                <a
+                  href="/login"
+                  className="block text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Đăng nhập ngay
+                </a>
+              </div>
+            )}
           </div>
 
           {/* JOB INFO */}
