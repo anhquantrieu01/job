@@ -15,23 +15,50 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  EMPLOYER
+}
+
+enum JobType {
+  FULLTIME
+  PARTTIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWING
+  REJECTED
+  ACCEPTED
 }
 
 model User {
-  id            String          @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String          @unique
+  email         String    @unique
   emailVerified DateTime?
   image         String?
-  password String?
-  role     Role    @default(USER)
+  password      String?
+  role          Role?     @default(USER)
   accounts      Account[]
   sessions      Session[]
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  companyId String?
+  company   Company? @relation("CompanyUsers", fields: [companyId], references: [id])
+  ownedJobs Job[]
+  ownedCompanies Company[] @relation("CompanyOwner")
+
+  resumes      Resume[]
+  applications Application[]
+  savedJobs    SavedJob[]
+  notification Notification[]
+
+  @@index([companyId])
 }
- 
+
 model Account {
   userId            String
   type              String
@@ -44,29 +71,195 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
- 
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@id([provider, providerAccountId])
 }
- 
+
 model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
- 
+
 model VerificationToken {
   identifier String
   token      String
   expires    DateTime
- 
+
   @@id([identifier, token])
+}
+
+model Company {
+  id           String  @id @default(cuid())
+  name         String
+  logoUrl      String?
+  logoPublicId String?
+  website      String?
+  description  String?
+  location     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ownerId   String
+  owner     User     @relation("CompanyOwner", fields: [ownerId], references: [id])
+  users     User[]   @relation("CompanyUsers")
+
+  jobs Job[]
+
+  @@index([name])
+}
+
+model Job {
+  id          String @id @default(cuid())
+  title       String
+  slug        String @unique
+  description String
+  salaryMin   Int?
+  salaryMax   Int?
+  currency    String @default("USD")
+
+  jobType   JobType
+  isActive  Boolean   @default(true)
+  views     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  ownerId String
+  owner   User @relation(fields: [ownerId], references: [id])
+  categoryId    String?
+  category      JobCategory?             @relation(fields: [categoryId], references: [id])
+  locationId    String
+  location      Location                 @relation(fields: [locationId], references: [id])
+  applications  Application[]
+  savedBy       SavedJob[]
+  search_vector Unsupported("tsvector")?
+  skills        JobSkill[]
+
+  // Home page (no filter, sort + cursor)
+  @@index([isActive, createdAt, id])
+  // Filter + pagination
+  @@index([isActive, locationId, jobType, createdAt, id])
+  // Full-text search
+  @@index([search_vector], type: Gin)
+}
+
+model Location {
+  id   String @id @default(cuid())
+  name String @unique
+
+  jobs Job[]
+
+  @@index([name])
+}
+
+model JobCategory {
+  id   String @id @default(cuid())
+  name String
+
+  jobs Job[]
+
+  @@index([name])
+}
+
+model JobSkill {
+  jobId   String
+  skillId String
+
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@index([skillId])
+}
+
+model Skill {
+  id   String @id @default(cuid())
+  name String @unique
+
+  jobs JobSkill[]
+}
+
+model Resume {
+  id           String  @id @default(cuid())
+  title        String
+  fileUrl      String
+  filePublicId String?
+  userId       String
+  user         User    @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  applications Application[]
+}
+
+model Application {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  resumeId String?
+  resume   Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  status ApplicationStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  coverLetter String?
+  employerNote String?
+  updatedAt DateTime @updatedAt
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
+  @@index([status])
+}
+
+model SavedJob {
+  id String @id @default(cuid())
+
+  userId String
+  jobId  String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([jobId])
+}
+
+enum NotificationType {
+  APPLY_JOB
+  APPLICATION_STATUS
+  NEW_JOB
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String // người nhận notification
+  type      NotificationType
+  title     String
+  message   String
+  entityId  String? 
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
