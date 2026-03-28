@@ -31,14 +31,15 @@ export default function JobListClient({
     if (!cursor) return;
 
     startTransition(async () => {
-      const data = await getJobsAction({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data : any = await getJobsAction({
         cursorId: cursor,
         search,
         locationId,
         jobType,
       });
 
-      setJobs((prev) => [...prev, ...(data.jobs as JobExpanded[])]);
+      setJobs((prev) => [...prev, ...data.jobs]); // 👈 append
       setCursor(data.nextCursor!);
     });
   };

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Job } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
 import { redis } from "./redis";
 
@@ -20,28 +21,8 @@ type GetJobsParams = {
   jobType?: string;
 };
 
-type JobResponse = {
-  id: string;
-  title: string;
-  description: string;
-  jobType: string;
-  salaryMin: number | null;
-  salaryMax: number | null;
-  currency: string;
-  createdAt: Date;
-  slug: string;
-  company: {
-    id: string;
-    name: string;
-  };
-  location: {
-    id: string;
-    name: string;
-  } | null;
-};
-
 type JobsResult = {
-  jobs: JobResponse[];
+  jobs: Job[];
   nextCursor?: string;
 };
 
@@ -170,9 +151,8 @@ export async function getJobs({
   const nextCursor =
     rows.length === PAGE_SIZE ? rows[rows.length - 1].id : undefined;
 
-  const result: JobsResult = { jobs, nextCursor };
+  const result : any = { jobs, nextCursor };
 
-  // ✅ cache (TTL có thể adjust)
   await redis.set(cacheKey, result, { ex: 60 });
 
   return result;

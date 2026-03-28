@@ -23,8 +23,8 @@ export default async function JobListWrapper({
     jobType,
   })
 
-  // ✅ áp dụng limit
-  const finalJobs = limit ? jobs.slice(0, limit) : jobs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const finalJobs : any = limit ? jobs.slice(0, limit) : jobs
 
   return (
     <JobListClient
